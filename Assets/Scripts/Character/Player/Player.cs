@@ -21,11 +21,16 @@ public class Player : MonoBehaviour
     public float runSpeed;
     public float dashDistance = 1f;      // 冲刺距离
     
+    [Header("技能系统")]
+    public SkillSystem skillSystem;
+    public Skill spiningSkill;
+    public bool skill1;
+    
     [Header("状态")]
     public bool isAttacking;
     private bool _attackInput; // 接收攻击输入
     public bool isDashing;
-    public bool hit;
+    // public bool hit;
     private bool _dead;
 
     private SwordWeapon _weapon;
@@ -40,6 +45,14 @@ public class Player : MonoBehaviour
                 return walkSpeed;
         }
     }
+
+    public Animator Anim
+    {
+        get
+        {
+            return _anim;
+        }
+    }
     
     public float rotationSpeed;
 
@@ -52,6 +65,9 @@ public class Player : MonoBehaviour
         _weapon = GetComponentInChildren<SwordWeapon>();
         CombatEntity = new Entity();
         CombatEntity.Init();
+        
+        skillSystem = new SkillSystem(this);
+        spiningSkill = new SpiningSkill();
         DontDestroyOnLoad(this.gameObject);
     }
 
@@ -69,10 +85,15 @@ public class Player : MonoBehaviour
         {
             _attackInput = true;
         };
-        _playerInputControl.keyboard.Attack.performed += ctx =>
+        _playerInputControl.keyboard.Skill.performed += ctx =>
         {
-            // TODO: 按下空格释放技能逻辑
+            // TODO: 按下Q释放技能逻辑
+            Debug.Log("按下技能键Q");
+            skill1 = true;
+            skillSystem.UsedSkill("SpiningSkill");
         };
+        
+        skillSystem.RegisterSkill("SpiningSkill", spiningSkill);
     }
 
     protected virtual void FixedUpdate()

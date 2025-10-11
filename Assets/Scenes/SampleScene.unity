@@ -2780,10 +2780,8 @@ MonoBehaviour:
   walkSpeed: 4
   runSpeed: 6
   dashDistance: 2
-  dashDuration: 0.25
   isAttacking: 0
   isDashing: 0
-  hit: 0
   rotationSpeed: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
