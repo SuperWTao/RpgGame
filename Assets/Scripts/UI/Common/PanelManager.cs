@@ -22,7 +22,7 @@ public static class PanelManager
 	public static void Init()
 	{	
 		// 找到场景中的root， root下有canvas， canvas下有panel和tip
-		root = GameObject.Find("Root").transform;
+		root = GameObject.Find("UIRoot").transform;
 		canvas = root.Find("Canvas"); 
 		Transform panel = canvas.Find("Panel");
 		Transform tip = canvas.Find("Tip");
