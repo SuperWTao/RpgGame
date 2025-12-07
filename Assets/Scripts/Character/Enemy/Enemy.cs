@@ -15,7 +15,7 @@ public class Enemy : MonoBehaviour
 
     public float radius;
     public LayerMask playerLayer;
-    public Player attackTarget;
+    public PlayerController attackTarget;
 
     public float attackRange;
     
@@ -103,7 +103,7 @@ public class Enemy : MonoBehaviour
         if(num > 0)
             foreach(Collider coll in colliders)
             {
-                attackTarget = coll.GetComponent<Player>();
+                attackTarget = coll.GetComponent<PlayerController>();
                 return true;
             }
         attackTarget = null;

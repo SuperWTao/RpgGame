@@ -5,7 +5,7 @@ using UnityEngine;
 public abstract class Skill
 {
     public SkillsConfigObject config;
-    protected Player player;
+    protected PlayerController player;
     
     // 冷却
     public float lastUsedTime = -100f;
@@ -13,7 +13,7 @@ public abstract class Skill
     public void StartCoolDown() => lastUsedTime = Time.time;
     public abstract IEnumerator Execute();
     
-    public virtual void Init(Player player, SkillsConfigObject config)
+    public virtual void Init(PlayerController player, SkillsConfigObject config)
     {
         this.player = player;
         this.config = config;
@@ -23,7 +23,7 @@ public abstract class Skill
     {
         if (isOnCoolDown)
             return false;
-        if (player.isDashing || player.isAttacking)
+        if (player.isAttacking)
             return false;
         return true;
     }

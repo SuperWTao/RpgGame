@@ -22,14 +22,14 @@ public class PlayerWeapon : MonoBehaviour
     private Vector3[] _previousPos; // 上一帧的位置
     public LayerMask targetLayer;
     public bool isAttacking;
-    public Player owner;
+    public PlayerController owner;
     
     private RaycastHit[] _raycastHitCache = new RaycastHit[32];
     private HashSet<Collider> _colliderSet = new HashSet<Collider>();
 
     private void Start()
     {
-        owner = GetComponentInParent<Player>();
+        owner = GetComponentInParent<PlayerController>();
     }
 
     private void Update()

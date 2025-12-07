@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class SkillSystem
 {
-    public Player player;
+    public PlayerController player;
     public Dictionary<string, Skill> skillsDict = new Dictionary<string, Skill>();
 
-    public SkillSystem(Player player)
+    public SkillSystem(PlayerController player)
     {
         this.player = player;
     }
