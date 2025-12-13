@@ -7,9 +7,8 @@ using UnityEngine.InputSystem;
 
 public enum PlayerState
 {
-    Stand,
-    Falling,
-    Jumping,
+    Move = 0,
+    Jump = 1
 }
 
 public class PlayerController : MonoBehaviour
@@ -68,6 +67,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    #region 生命周期
     protected virtual void Awake()
     {
         _playerAction = new PlayerAction();
@@ -82,7 +82,6 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        _anim.SetFloat("PlayerState", (float)_playerState);
         CombatEntity.AddListener(ActionPointType.PostCauseDamage, OnPlayerAttack);
         CombatEntity.AddListener(ActionPointType.PostReceiveDamage, OnPlayerHit);
     }
@@ -107,9 +106,9 @@ public class PlayerController : MonoBehaviour
 
     protected virtual void Update()
     {
+        CheckGround();
         SwitchPlayerState();
         SetUpAnimator();
-        CheckGround();
         CaculateGravity();
         Jump();
         Attack();
@@ -122,17 +121,9 @@ public class PlayerController : MonoBehaviour
     {
         _playerAction.Disable();
     }
+    #endregion
 
-    private void CaculateInputDirection()
-    {
-        // 获取相机的前方在水平平面上的投影
-        Vector3 camForwardProjection = new Vector3(_camera.transform.forward.x, 0, _camera.transform.forward.z).normalized;
-        // 得到世界坐标下的移动向量
-        _playerMovement = camForwardProjection * _inputValue.y + _camera.transform.right * _inputValue.x;
-        // 将世界坐标下的移动向量转换为局部坐标下的移动向量
-        _playerMovement = this.transform.InverseTransformVector(_playerMovement);
-    }
-
+    #region 人物移动跳跃
     private void CheckGround()
     {
         if(Physics.SphereCast(this.transform.position + (Vector3.up * _groundCheckOffset), _characterController.radius, Vector3.down, out RaycastHit hitInfo, _groundCheckOffset - _characterController.radius + 2 * _characterController.skinWidth))
@@ -173,7 +164,18 @@ public class PlayerController : MonoBehaviour
             _verticalVelocity = Mathf.Sqrt(-2f * _gravity * _maxHeight);
             float feet = UnityEngine.Random.Range(-1f, 1f);
             _anim.SetFloat("LeftRightFeet", feet);
+            _isJumping = false;
         }
+    }
+    
+    private void CaculateInputDirection()
+    {
+        // 获取相机的前方在水平平面上的投影
+        Vector3 camForwardProjection = new Vector3(_camera.transform.forward.x, 0, _camera.transform.forward.z).normalized;
+        // 得到世界坐标下的移动向量
+        _playerMovement = camForwardProjection * _inputValue.y + _camera.transform.right * _inputValue.x;
+        // 将世界坐标下的移动向量转换为局部坐标下的移动向量
+        // _playerMovement = this.transform.InverseTransformVector(_playerMovement);
     }
     
     /// <summary>
@@ -181,9 +183,17 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void Rotate()
     {
-        Vector3 worldMove = transform.TransformDirection(_playerMovement);
+        // Vector3 worldMove = transform.TransformDirection(_playerMovement);
+        Vector3 worldMove = _playerMovement;
         worldMove.y = 0f;
         if (worldMove.sqrMagnitude < 0.0001f) return;
+        Vector3 dir = worldMove.normalized;
+        float forwardDot = Vector3.Dot(transform.forward, dir);
+        // 如果是后退（与朝前方向夹角大于90度），则不直接转向背面
+        if (forwardDot < 0f)
+        {
+            return;
+        }
         Quaternion targetRotation = Quaternion.LookRotation(worldMove, Vector3.up);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
     }
@@ -195,7 +205,14 @@ public class PlayerController : MonoBehaviour
             _anim.SetFloat("Speed", 0);
             return;
         }
-        _targetSpeed = _isRunning ? runSpeed : walkSpeed;
+        if (_inputValue.y < 0)
+        {
+            _targetSpeed = -walkSpeed;
+        }
+        else
+        {
+            _targetSpeed = _isRunning ? runSpeed : walkSpeed;
+        }
         _targetSpeed *= _inputValue.magnitude;
         _currentSpeed = Mathf.Lerp(_currentSpeed, _targetSpeed, 0.5f);
         _anim.SetFloat("Speed", _currentSpeed);
@@ -217,23 +234,22 @@ public class PlayerController : MonoBehaviour
 
     private void OnAnimatorMove()
     {
-        if (_playerState != PlayerState.Stand)
+        if (_playerState != PlayerState.Move)
         {
+            _averageVel.y = _verticalVelocity;
             Vector3 playerMoveDeltaMovement = _averageVel * Time.deltaTime;
-            playerMoveDeltaMovement.y = _verticalVelocity * Time.deltaTime;
-            _characterController.Move(_anim.deltaPosition);
-            // transform.Rotate(_anim.deltaRotation.eulerAngles);
+            _characterController.Move(playerMoveDeltaMovement);
         }
         else
         {
             Vector3 playerMoveDeltaMovement = _anim.deltaPosition;
             playerMoveDeltaMovement.y = _verticalVelocity * Time.deltaTime;
-            _characterController.Move(_anim.deltaPosition);
+            _characterController.Move(playerMoveDeltaMovement);
             transform.Rotate(_anim.deltaRotation.eulerAngles);
             _averageVel = AverageVelocity(_anim.velocity);
         }
     }
-
+    #endregion
 
     public void Attack()
     {
@@ -255,21 +271,8 @@ public class PlayerController : MonoBehaviour
 
     private void SwitchPlayerState()
     {
-        if (!_isGrounded)
-        {
-            if (_verticalVelocity > 0)
-            {
-                _playerState = PlayerState.Jumping;
-            }
-            else
-            {
-                _playerState = PlayerState.Falling;
-            }
-        }
-        else
-        {
-            _playerState = PlayerState.Stand;
-        }
+        _playerState = !_isGrounded ? PlayerState.Jump : PlayerState.Move;
+        _anim.SetFloat("PlayerState", (float)_playerState);
     }
 
     private void SetUpAnimator()

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 5b9619ecf733294468ea133e100df0dc
+guid: 1654f8cec1d2b4a4d9fd7f051d79b51c
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -33,23 +33,23 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: KA_Combat_OHSword01_Combo2
+      name: KA_Walk_Bwd
       takeName: Unreal Take
       internalID: 8993902097722301239
       firstFrame: 0
-      lastFrame: 80
+      lastFrame: 40
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 1
-      loopBlendPositionY: 0
+      loopBlendPositionY: 1
       loopBlendPositionXZ: 0
-      keepOriginalOrientation: 1
+      keepOriginalOrientation: 0
       keepOriginalPositionY: 0
       keepOriginalPositionXZ: 0
       heightFromFeet: 1
@@ -106,13 +106,7 @@ ModelImporter:
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
-  referencedClips:
-  - d1c07553972fef24c8b74163f3602bcf
-  - ccbcc1a9eef2ce849a1d4541c16a0b7a
-  - 1123f00e377339042aa8f89d81786258
-  - 0378a7ca4ff41bb46ae07b9b341603ff
-  - 58cce34b4c218c8428ac275f660ff0b6
-  - 1654f8cec1d2b4a4d9fd7f051d79b51c
+  referencedClips: []
   importAnimation: 1
   humanDescription:
     serializedVersion: 3
