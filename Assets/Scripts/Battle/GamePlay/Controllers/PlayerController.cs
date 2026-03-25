@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using cfg;
 using UnityEngine;
@@ -14,13 +13,13 @@ public enum PlayerState
 public class PlayerController : MonoBehaviour
 {
 #region 速度缓存池定义
-    private static readonly int CACHE_SIZE = 3;
-    private Vector3[] _velCache = new Vector3[CACHE_SIZE];
+    private const int CACHE_SIZE = 3;
+    private readonly Vector3[] _velCache = new Vector3[CACHE_SIZE];
     private int _currentChacheIndex = 0;
     private Vector3 _averageVel = Vector3.zero;
-    
 #endregion
-    // 组件
+
+    // 输入与组件
     private PlayerAction _playerAction;
     private Vector2 _inputValue => _playerAction.Player.Move.ReadValue<Vector2>();
     private Animator _anim;
@@ -28,36 +27,33 @@ public class PlayerController : MonoBehaviour
     private CharacterController _characterController;
 
     [Header("Battle Runtime")]
-    // 临时写死
     [SerializeField] private bool enableBattleRuntime = true;
     [SerializeField] private int playerEntityId = 1;
-    [SerializeField] private int enemyEntityId = 2;
     [SerializeField] private int playerMaxHp = 100;
     [SerializeField] private int playerAttack = 15;
     [SerializeField] private int playerDefense = 3;
-    [SerializeField] private int enemyMaxHp = 80;
-    [SerializeField] private int enemyAttack = 10;
-    [SerializeField] private int enemyDefense = 2;
 
-    [Header("Enemy AI Runtime")]
-    [SerializeField] private EnemyAIDemo enemyAIDemo;
-    [SerializeField] private Transform enemyTransform;
-    [SerializeField] private bool enableEnemyAI = true;
+    [Header("Hit Detection")]
+    [SerializeField] private Transform attackHitPoint;
+    [SerializeField] private float attackHitRadius = 1.4f;
+    [SerializeField] private LayerMask enemyHitLayer;
 
-    private bool _enemyDeadPrinted = false;
+    // 命中缓冲和去重
+    private readonly Collider[] _hitBuffer = new Collider[32];
+    private readonly HashSet<int> _hitEntityThisSwing = new HashSet<int>();
+    private bool _damageAppliedThisAttack = false;
 
+    // 战斗系统
     private BattleContext _battle;
     private ICombatEventBus _eventBus;
     private BattleEffectRegistry _effectRegistry;
     private IBattlePipeline _pipeline;
-
     private BattleEntity _playerBattleEntity;
-    private BattleEntity _enemyBattleEntity;
 
-    private long _requestIdSeed = 10000;
+    private long _localRequestIdSeed = 10000;
     private Action<CombatEvent> _battleEventHandler;
 
-    [Header("移动")] 
+    [Header("移动")]
     private Vector3 _playerMovement = Vector3.zero;
     public float walkSpeed;
     public float runSpeed;
@@ -67,31 +63,19 @@ public class PlayerController : MonoBehaviour
     private float _gravity = -9.81f;
     private float _verticalVelocity;
     private float _maxHeight = 2f;
-    
+
     [Header("状态")]
     public bool isAttacking;
     private bool _attackInput;
-    private bool _dead;
     private bool _isRunning = false;
     private bool _isJumping = false;
     private bool _isGrounded;
     private float _groundCheckOffset = 0.5f;
     private float _fallMultiplier = 1.5f;
-    
+
     private PlayerState _playerState;
-    private float _groundMoveThreshold = 0f;
-    private float _jumpThreshold = 1f;
-    private float midairThreshold = 2.1f;
-    private float landingThreshold = 1f;
 
-
-    public Animator Anim
-    {
-        get
-        {
-            return _anim;
-        }
-    }
+    public Animator Anim => _anim;
 
 #region 生命周期
     private void Awake()
@@ -106,49 +90,22 @@ public class PlayerController : MonoBehaviour
             InitBattleRuntime();
         }
 
-        DontDestroyOnLoad(this.gameObject);
-    }
-
-    private void Start()
-    {
+        DontDestroyOnLoad(gameObject);
     }
 
     private void OnEnable()
     {
         _playerAction.Enable();
-        // 攻击按键回调，用于检测攻击输入
-        _playerAction.Player.Attack.performed += ctx =>
-        {
-            _attackInput = true;
-        };
-        _playerAction.Player.Run.started += ctx =>
-        {
-            _isRunning = !_isRunning;
-        };
-        _playerAction.Player.Jump.started += ctx =>
-        {
-            _isJumping = ctx.ReadValueAsButton();
-        };
-    }
-
-    private void Update()
-    {
-        if (enableBattleRuntime && _battle != null)
-        {
-            _battle.AdvanceTick();
-        }
-        CheckGround();
-        SwitchPlayerState();
-        CaculateGravity();
-        Jump();
-        Attack();
-        CaculateInputDirection();
-        Move(); 
-        Rotate();
+        _playerAction.Player.Attack.performed += OnAttackPerformed;
+        _playerAction.Player.Run.started += OnRunStarted;
+        _playerAction.Player.Jump.started += OnJumpStarted;
     }
 
     private void OnDisable()
     {
+        _playerAction.Player.Attack.performed -= OnAttackPerformed;
+        _playerAction.Player.Run.started -= OnRunStarted;
+        _playerAction.Player.Jump.started -= OnJumpStarted;
         _playerAction.Disable();
 
         if (_eventBus != null && _battleEventHandler != null)
@@ -156,12 +113,50 @@ public class PlayerController : MonoBehaviour
             _eventBus.UnsubscribeAll(_battleEventHandler);
         }
     }
+
+    private void Update()
+    {
+        // Battle tick 由 BattleWorld.Update 驱动，这里不再重复 AdvanceTick。
+
+        CheckGround();
+        SwitchPlayerState();
+        CaculateGravity();
+        Jump();
+        Attack();
+        CaculateInputDirection();
+        Move();
+        Rotate();
+
+        HandleAttackHitWindow();
+    }
+#endregion
+
+#region 输入回调
+    private void OnAttackPerformed(InputAction.CallbackContext ctx)
+    {
+        _attackInput = true;
+    }
+
+    private void OnRunStarted(InputAction.CallbackContext ctx)
+    {
+        _isRunning = !_isRunning;
+    }
+
+    private void OnJumpStarted(InputAction.CallbackContext ctx)
+    {
+        _isJumping = ctx.ReadValueAsButton();
+    }
 #endregion
 
 #region 移动跳跃
     private void CheckGround()
     {
-        if(Physics.SphereCast(this.transform.position + (Vector3.up * _groundCheckOffset), _characterController.radius, Vector3.down, out RaycastHit hitInfo, _groundCheckOffset - _characterController.radius + 2 * _characterController.skinWidth))
+        if (Physics.SphereCast(
+                transform.position + (Vector3.up * _groundCheckOffset),
+                _characterController.radius,
+                Vector3.down,
+                out _,
+                _groundCheckOffset - _characterController.radius + 2 * _characterController.skinWidth))
         {
             _isGrounded = true;
         }
@@ -170,25 +165,22 @@ public class PlayerController : MonoBehaviour
             _isGrounded = false;
         }
     }
-    
+
     private void CaculateGravity()
     {
         if (_isGrounded)
         {
-            // 由于characterController的问题，需要一直施加向下的速度，否则无法检测到是否在地面上
             _verticalVelocity = _gravity * Time.deltaTime;
             return;
         }
+
+        if (_verticalVelocity < 0 || !_isJumping)
+        {
+            _verticalVelocity += _gravity * Time.deltaTime * _fallMultiplier;
+        }
         else
         {
-            if (_verticalVelocity < 0 || !_isJumping)
-            {
-                _verticalVelocity += _gravity * Time.deltaTime * _fallMultiplier;
-            }
-            else
-            {
-                _verticalVelocity += _gravity * Time.deltaTime;
-            }
+            _verticalVelocity += _gravity * Time.deltaTime;
         }
     }
 
@@ -202,33 +194,23 @@ public class PlayerController : MonoBehaviour
             _isJumping = false;
         }
     }
-    
+
     private void CaculateInputDirection()
     {
-        // 获取相机的前方在水平平面上的投影
         Vector3 camForwardProjection = new Vector3(_camera.transform.forward.x, 0, _camera.transform.forward.z).normalized;
-        // 得到世界坐标下的移动向量
         _playerMovement = camForwardProjection * _inputValue.y + _camera.transform.right * _inputValue.x;
-        // 将世界坐标下的移动向量转换为局部坐标下的移动向量
-        // _playerMovement = this.transform.InverseTransformVector(_playerMovement);
     }
-    
-    /// <summary>
-    /// 通过输入控制玩家的旋转
-    /// </summary>
+
     private void Rotate()
     {
-        // Vector3 worldMove = transform.TransformDirection(_playerMovement);
         Vector3 worldMove = _playerMovement;
         worldMove.y = 0f;
         if (worldMove.sqrMagnitude < 0.0001f) return;
+
         Vector3 dir = worldMove.normalized;
         float forwardDot = Vector3.Dot(transform.forward, dir);
-        // 如果是后退（与朝前方向夹角大于90度），则不直接转向背面
-        if (forwardDot < 0f)
-        {
-            return;
-        }
+        if (forwardDot < 0f) return;
+
         Quaternion targetRotation = Quaternion.LookRotation(worldMove, Vector3.up);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
     }
@@ -240,6 +222,7 @@ public class PlayerController : MonoBehaviour
             _anim.SetFloat("Speed", 0);
             return;
         }
+
         if (_inputValue.y < 0)
         {
             _targetSpeed = -walkSpeed;
@@ -248,6 +231,7 @@ public class PlayerController : MonoBehaviour
         {
             _targetSpeed = _isRunning ? runSpeed : walkSpeed;
         }
+
         _targetSpeed *= _inputValue.magnitude;
         _currentSpeed = Mathf.Lerp(_currentSpeed, _targetSpeed, 0.5f);
         _anim.SetFloat("Speed", _currentSpeed);
@@ -256,8 +240,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 AverageVelocity(Vector3 newVal)
     {
         _velCache[_currentChacheIndex] = newVal;
-        _currentChacheIndex++;
-        _currentChacheIndex %= CACHE_SIZE;
+        _currentChacheIndex = (_currentChacheIndex + 1) % CACHE_SIZE;
+
         Vector3 averageVal = Vector3.zero;
         for (int i = 0; i < CACHE_SIZE; i++)
         {
@@ -286,6 +270,7 @@ public class PlayerController : MonoBehaviour
     }
 #endregion
 
+#region 攻击逻辑
     public void Attack()
     {
         _anim.SetFloat("StateTime", Mathf.Repeat(_anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 1f));
@@ -293,23 +278,141 @@ public class PlayerController : MonoBehaviour
         {
             Ray ray = _camera.ScreenPointToRay(Mouse.current.position.ReadValue());
             Plane hitPlane = new Plane(Vector3.up, transform.position);
-            float distance;
-            if (hitPlane.Raycast(ray, out distance))
+            if (hitPlane.Raycast(ray, out float distance))
             {
                 Vector3 targetPoint = ray.GetPoint(distance);
                 transform.LookAt(targetPoint);
             }
 
             _anim.SetTrigger("Attack");
-
-            if (enableBattleRuntime)
-            {
-                TryExecutePlayerAttackRequest();
-            }
-
             _attackInput = false;
         }
     }
+
+    private void HandleAttackHitWindow()
+    {
+        if (!enableBattleRuntime || _battle == null) return;
+
+        if (!isAttacking)
+        {
+            _damageAppliedThisAttack = false;
+            _hitEntityThisSwing.Clear();
+            return;
+        }
+
+        if (_damageAppliedThisAttack) return;
+
+        ApplyAttackHitByOverlap();
+        _damageAppliedThisAttack = true;
+    }
+
+    private void ApplyAttackHitByOverlap()
+    {
+        if (_pipeline == null || _battle == null || _playerBattleEntity == null) return;
+        if (_playerBattleEntity.IsDead) return;
+        if (attackHitPoint == null) return;
+
+        int count = Physics.OverlapSphereNonAlloc(
+            attackHitPoint.position,
+            attackHitRadius,
+            _hitBuffer,
+            enemyHitLayer,
+            QueryTriggerInteraction.Ignore);
+        Debug.Log(count);
+        for (int i = 0; i < count; i++)
+        {
+            Collider col = _hitBuffer[i];
+            if (col == null) continue;
+
+            BattleEnemyActor enemyActor = col.GetComponentInParent<BattleEnemyActor>();
+            if (enemyActor == null) continue;
+
+            int targetId = enemyActor.EntityId;
+            if (_hitEntityThisSwing.Contains(targetId)) continue;
+            _hitEntityThisSwing.Add(targetId);
+
+            if (!_battle.TryGetEntity(targetId, out var targetEntity)) continue;
+            if (targetEntity.IsDead) continue;
+
+            ActionRequest req = ActionRequest.CreateNormalAttack(NextRequestId(), playerEntityId, targetId);
+            ActionResult result = _pipeline.Execute(_battle, req);
+
+            if (!result.Success)
+            {
+                Debug.LogWarning("Player attack failed: " + result.Code + ", " + result.Message);
+                continue;
+            }
+
+            Debug.Log("[Battle] Player hit Enemy(" + targetId + ") for " + result.DamageApplied
+                      + ". Enemy HP: " + targetEntity.CurrentHp + "/" + targetEntity.MaxHp);
+
+            if (targetEntity.IsDead)
+            {
+                Debug.Log("[Battle] Enemy Dead: " + targetId);
+            }
+        }
+    }
+#endregion
+
+#region BattleRuntime
+    private void InitBattleRuntime()
+    {
+        BattleWorld world = BattleWorld.Instance;
+        if (world == null)
+        {
+            Debug.LogError("[Battle] BattleWorld.Instance is null. Please add BattleWorld to scene.");
+            enableBattleRuntime = false;
+            return;
+        }
+
+        _battle = world.Battle;
+        _eventBus = world.EventBus;
+        _effectRegistry = world.EffectRegistry;
+        _pipeline = world.Pipeline;
+
+        if (_battle == null || _eventBus == null || _effectRegistry == null || _pipeline == null)
+        {
+            Debug.LogError("[Battle] BattleWorld runtime is not initialized.");
+            enableBattleRuntime = false;
+            return;
+        }
+
+        world.RegisterPlayer(
+            playerEntityId,
+            "Player",
+            playerMaxHp,
+            playerAttack,
+            playerDefense,
+            transform);
+
+        if (!_battle.TryGetEntity(playerEntityId, out _playerBattleEntity))
+        {
+            Debug.LogError("[Battle] RegisterPlayer succeeded but player entity not found.");
+            enableBattleRuntime = false;
+            return;
+        }
+
+        _effectRegistry.AddPassive(playerEntityId, new ExecutionHealPassive(5));
+
+        _battleEventHandler = evt =>
+        {
+            // Debug.Log("[BattleEvent] stage=" + evt.Stage + ", req=" + evt.RequestId + ", tick=" + evt.Tick);
+        };
+        _eventBus.SubscribeAll(_battleEventHandler);
+    }
+
+    private long NextRequestId()
+    {
+        BattleWorld world = BattleWorld.Instance;
+        if (world != null)
+        {
+            return world.NextRequestId();
+        }
+
+        _localRequestIdSeed++;
+        return _localRequestIdSeed;
+    }
+#endregion
 
     private void SwitchPlayerState()
     {
@@ -317,98 +420,12 @@ public class PlayerController : MonoBehaviour
         _anim.SetFloat("PlayerState", (float)_playerState);
     }
 
-private void InitBattleRuntime()
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
     {
-        _battle = new BattleContext(1, 123456);
-        _eventBus = new CombatEventBus();
-        _effectRegistry = new BattleEffectRegistry();
-        _pipeline = new StandardBattlePipeline(_eventBus, _effectRegistry);
-
-        _playerBattleEntity = new BattleEntity(
-            playerEntityId,
-            "Player",
-            playerMaxHp,
-            playerAttack,
-            playerDefense);
-
-        _enemyBattleEntity = new BattleEntity(
-            enemyEntityId,
-            "Enemy",
-            enemyMaxHp,
-            enemyAttack,
-            enemyDefense);
-
-        _battle.AddEntity(_playerBattleEntity);
-        _battle.AddEntity(_enemyBattleEntity);
-
-        // 示例：玩家挂一个击杀回复被动
-        _effectRegistry.AddPassive(playerEntityId, new ExecutionHealPassive(5));
-
-        _battleEventHandler = evt =>
-        {
-            // 你可以观察流水线阶段
-            // Debug.Log("[BattleEvent] stage=" + evt.Stage + ", req=" + evt.RequestId + ", tick=" + evt.Tick);
-        };
-        _eventBus.SubscribeAll(_battleEventHandler);
+        if (attackHitPoint == null) return;
+        Gizmos.color = new UnityEngine.Color(1f, 0.2f, 0.2f, 0.35f);
+        Gizmos.DrawSphere(attackHitPoint.position, attackHitRadius);
     }
-
-        private void InitEnemyAI()
-    {
-        if (enemyAIDemo == null)
-        {
-            Debug.LogWarning("[PlayerController] enemyAIDemo is null, skip AI init.");
-            return;
-        }
-
-        if (enemyTransform == null)
-        {
-            Debug.LogWarning("[PlayerController] enemyTransform is null, skip AI init.");
-            return;
-        }
-
-        // EnemyAI 追击目标设为玩家自己
-        enemyAIDemo.target = this.transform;
-
-        // 让敌人AI与玩家共用同一个战斗上下文和流水线
-        enemyAIDemo.Initialize(
-            _battle,
-            _pipeline,
-            enemyEntityId,     // 敌人是攻击方
-            playerEntityId,    // 玩家是目标
-            NextRequestId
-        );
-    }
-
-    private long NextRequestId()
-    {
-        _requestIdSeed++;
-        return _requestIdSeed;
-    }
-
-    private void TryExecutePlayerAttackRequest()
-    {
-        if (_pipeline == null || _battle == null) return;
-        if (_playerBattleEntity == null || _enemyBattleEntity == null) return;
-        if (_playerBattleEntity.IsDead || _enemyBattleEntity.IsDead) return;
-
-        ActionRequest req = ActionRequest.CreateNormalAttack(NextRequestId(), playerEntityId, enemyEntityId);
-        ActionResult result = _pipeline.Execute(_battle, req);
-
-        if (!result.Success)
-        {
-            Debug.LogWarning("Player attack failed: " + result.Code + ", " + result.Message);
-            return;
-        }
-
-        // 调试可用：看到敌人实时血量变化
-        Debug.Log("[Battle] Player hit Enemy for " + result.DamageApplied +
-                  ". Enemy HP: " + _enemyBattleEntity.CurrentHp + "/" + _enemyBattleEntity.MaxHp);
-
-        // 敌人死亡时只打印一次，不做其他效果
-        if (_enemyBattleEntity.IsDead && !_enemyDeadPrinted)
-        {
-            _enemyDeadPrinted = true;
-            Debug.Log("[Battle] Enemy Dead");
-        }
-    }
+#endif
 }
