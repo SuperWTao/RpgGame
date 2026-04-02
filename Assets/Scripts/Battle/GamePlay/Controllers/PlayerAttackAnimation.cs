@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerAttackAnimation : StateMachineBehaviour
@@ -11,7 +9,7 @@ public class PlayerAttackAnimation : StateMachineBehaviour
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         _playerController = animator.GetComponent<PlayerController>();
-        _playerController.isAttacking = true;
+        _playerController.EnterAttackSegment(attackIndex);
     }
 
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
@@ -23,7 +21,8 @@ public class PlayerAttackAnimation : StateMachineBehaviour
     // OnStateExit is called when a transition ends and the state machine finishes evaluating this state
     override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        _playerController.isAttacking = false;
+        // Debug.Log($"Exit attack segment {attackIndex}");
+        _playerController.ExitAttackSegment(attackIndex);
     }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()

@@ -43,7 +43,9 @@ public class PlayerController : MonoBehaviour
     private readonly HashSet<int> _hitEntityThisSwing = new HashSet<int>();
     private bool _damageAppliedThisAttack = false;
 
-    // 战斗系统
+    [Header("战斗系统")]
+    private int _currentAttackIndex = -1;
+    private readonly List<int> _capturedTargetIds = new List<int>(16);
     private BattleContext _battle;
     private ICombatEventBus _eventBus;
     private BattleEffectRegistry _effectRegistry;
@@ -85,12 +87,15 @@ public class PlayerController : MonoBehaviour
         _camera = GameObject.Find("Main Camera").GetComponent<Camera>();
         _characterController = GetComponent<CharacterController>();
 
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void Start()
+    {
         if (enableBattleRuntime)
         {
             InitBattleRuntime();
         }
-
-        DontDestroyOnLoad(gameObject);
     }
 
     private void OnEnable()
@@ -116,8 +121,6 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // Battle tick 由 BattleWorld.Update 驱动，这里不再重复 AdvanceTick。
-
         CheckGround();
         SwitchPlayerState();
         CaculateGravity();
@@ -126,8 +129,6 @@ public class PlayerController : MonoBehaviour
         CaculateInputDirection();
         Move();
         Rotate();
-
-        HandleAttackHitWindow();
     }
 #endregion
 
@@ -275,39 +276,65 @@ public class PlayerController : MonoBehaviour
     {
         _anim.SetFloat("StateTime", Mathf.Repeat(_anim.GetCurrentAnimatorStateInfo(0).normalizedTime, 1f));
         if (_attackInput)
-        {
-            Ray ray = _camera.ScreenPointToRay(Mouse.current.position.ReadValue());
-            Plane hitPlane = new Plane(Vector3.up, transform.position);
-            if (hitPlane.Raycast(ray, out float distance))
-            {
-                Vector3 targetPoint = ray.GetPoint(distance);
-                transform.LookAt(targetPoint);
-            }
+        {   
+            // 攻击朝向由动画控制，这里不再处理朝向。后续如果需要根据鼠标位置调整朝向，可以在这里添加代码，例如：
+            // Ray ray = _camera.ScreenPointToRay(Mouse.current.position.ReadValue());
+            // Plane hitPlane = new Plane(Vector3.up, transform.position);
+            // if (hitPlane.Raycast(ray, out float distance))
+            // {
+            //     Vector3 targetPoint = ray.GetPoint(distance);
+            //     transform.LookAt(targetPoint);
+            // }
 
             _anim.SetTrigger("Attack");
             _attackInput = false;
         }
     }
 
-    private void HandleAttackHitWindow()
+    public void EnterAttackSegment(int attackIndex)
     {
-        if (!enableBattleRuntime || _battle == null) return;
+        isAttacking = true;
 
-        if (!isAttacking)
+        if (_currentAttackIndex != attackIndex)
         {
+            _currentAttackIndex = attackIndex;
             _damageAppliedThisAttack = false;
             _hitEntityThisSwing.Clear();
-            return;
+            CaptureTargetsAtAttackStart();
         }
-
-        if (_damageAppliedThisAttack) return;
-
-        ApplyAttackHitByOverlap();
-        _damageAppliedThisAttack = true;
     }
 
-    private void ApplyAttackHitByOverlap()
+    public void ExitAttackSegment(int attackIndex)
     {
+        if (_currentAttackIndex != attackIndex) return;
+
+        isAttacking = false;
+        _currentAttackIndex = -1;
+        _damageAppliedThisAttack = false;
+        _hitEntityThisSwing.Clear();
+        _capturedTargetIds.Clear();
+    }
+
+    // 由动画事件在命中帧触发，立即结算伤害。
+    public void OnAttackHitFrameEvent()
+    {
+        if (!enableBattleRuntime || _battle == null) return;
+        if (!isAttacking) return;
+        if (_currentAttackIndex < 0) return;
+
+        // 进入攻击段时可能刚好没扫到目标；命中帧再补一次采样可显著降低漏判。
+        if (_capturedTargetIds.Count == 0)
+        {
+            CaptureTargetsAtAttackStart();
+        }
+
+        ApplyCapturedDamageNow();
+    }
+    
+    private void CaptureTargetsAtAttackStart()
+    {
+        _capturedTargetIds.Clear();
+
         if (_pipeline == null || _battle == null || _playerBattleEntity == null) return;
         if (_playerBattleEntity.IsDead) return;
         if (attackHitPoint == null) return;
@@ -318,7 +345,7 @@ public class PlayerController : MonoBehaviour
             _hitBuffer,
             enemyHitLayer,
             QueryTriggerInteraction.Ignore);
-        Debug.Log(count);
+
         for (int i = 0; i < count; i++)
         {
             Collider col = _hitBuffer[i];
@@ -328,8 +355,26 @@ public class PlayerController : MonoBehaviour
             if (enemyActor == null) continue;
 
             int targetId = enemyActor.EntityId;
-            if (_hitEntityThisSwing.Contains(targetId)) continue;
-            _hitEntityThisSwing.Add(targetId);
+            if (_capturedTargetIds.Contains(targetId)) continue;
+            if (!_battle.TryGetEntity(targetId, out var targetEntity)) continue;
+            if (targetEntity.IsDead) continue;
+
+            _capturedTargetIds.Add(targetId);
+        }
+    }
+
+    private void ApplyCapturedDamageNow()
+    {
+        if (_damageAppliedThisAttack)
+        {
+            return;
+        }
+        if (_pipeline == null || _battle == null || _playerBattleEntity == null) return;
+        if (_playerBattleEntity.IsDead) return;
+
+        for (int i = 0; i < _capturedTargetIds.Count; i++)
+        {
+            int targetId = _capturedTargetIds[i];
 
             if (!_battle.TryGetEntity(targetId, out var targetEntity)) continue;
             if (targetEntity.IsDead) continue;
@@ -351,6 +396,8 @@ public class PlayerController : MonoBehaviour
                 Debug.Log("[Battle] Enemy Dead: " + targetId);
             }
         }
+
+        _damageAppliedThisAttack = true;
     }
 #endregion
 
@@ -391,8 +438,6 @@ public class PlayerController : MonoBehaviour
             enableBattleRuntime = false;
             return;
         }
-
-        _effectRegistry.AddPassive(playerEntityId, new ExecutionHealPassive(5));
 
         _battleEventHandler = evt =>
         {

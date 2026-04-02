@@ -59,9 +59,9 @@ public sealed class BattleEnemyActor : MonoBehaviour
             return;
         }
 
-        if (!_aiEnabled) return;
-        if (_treeEntry == null || _blackboard == null) return;
-        if (_blackboard.Target == null) return;
+        // if (!_aiEnabled) return;
+        // if (_treeEntry == null || _blackboard == null) return;
+        // if (_blackboard.Target == null) return;
 
         if (!world.Battle.TryGetEntity(_blackboard.TargetEntityId, out var targetEntity)) return;
         if (targetEntity.IsDead) return;
