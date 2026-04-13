@@ -29,12 +29,12 @@ public partial class TbplayerAttributes
             playerAttributes _v;
             { if(!_ele.IsObject) { throw new SerializationException(); }  _v = global::cfg.playerAttributes.DeserializeplayerAttributes(_ele);  }
             _dataList.Add(_v);
-            _dataMap.Add(_v.Id, _v);
+            _dataMap.Add(_v.id, _v);
         }
     }
 
-    public System.Collections.Generic.Dictionary<int, playerAttributes> DataMap => _dataMap;
-    public System.Collections.Generic.List<playerAttributes> DataList => _dataList;
+    public System.Collections.Generic.Dictionary<int, playerAttributes> dataMap => _dataMap;
+    public System.Collections.Generic.List<playerAttributes> dataList => _dataList;
 
     public playerAttributes GetOrDefault(int key) => _dataMap.TryGetValue(key, out var v) ? v : default;
     public playerAttributes Get(int key) => _dataMap[key];

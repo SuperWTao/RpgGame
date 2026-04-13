@@ -17,9 +17,9 @@ public partial struct vector3
 {
     public vector3(JSONNode _buf) 
     {
-        { if(!_buf["x"].IsNumber) { throw new SerializationException(); }  X = _buf["x"]; }
-        { if(!_buf["y"].IsNumber) { throw new SerializationException(); }  Y = _buf["y"]; }
-        { if(!_buf["z"].IsNumber) { throw new SerializationException(); }  Z = _buf["z"]; }
+        { if(!_buf["x"].IsNumber) { throw new SerializationException(); }  x = _buf["x"]; }
+        { if(!_buf["y"].IsNumber) { throw new SerializationException(); }  y = _buf["y"]; }
+        { if(!_buf["z"].IsNumber) { throw new SerializationException(); }  z = _buf["z"]; }
     }
 
     public static vector3 Deserializevector3(JSONNode _buf)
@@ -27,9 +27,9 @@ public partial struct vector3
         return new vector3(_buf);
     }
 
-    public readonly float X;
-    public readonly float Y;
-    public readonly float Z;
+    public readonly float x;
+    public readonly float y;
+    public readonly float z;
    
 
     public  void ResolveRef(Tables tables)
@@ -39,9 +39,9 @@ public partial struct vector3
     public override string ToString()
     {
         return "{ "
-        + "x:" + X + ","
-        + "y:" + Y + ","
-        + "z:" + Z + ","
+        + "x:" + x + ","
+        + "y:" + y + ","
+        + "z:" + z + ","
         + "}";
     }
 }

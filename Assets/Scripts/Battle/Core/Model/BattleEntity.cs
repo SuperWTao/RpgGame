@@ -4,19 +4,19 @@ using UnityEngine;
 
 public sealed class BattleEntity
 {
-    public int EntityId { get; }
-    public string Name { get; }
+    public int entityId { get; }
+    public string name { get; }
 
-    public int MaxHp { get; private set; }
-    public int CurrentHp { get; private set; }
+    public int maxHp { get; private set; }
+    public int currentHp { get; private set; }
 
-    public int Attack { get; private set; }
-    public int Defense { get; private set; }
+    public int attack { get; private set; }
+    public int defense { get; private set; }
 
-    public bool IsDead => CurrentHp <= 0;
+    public bool isDead => currentHp <= 0;
 
     // 预留：Buff/标签/阵营等在后续步骤接入
-    public HashSet<string> Tags { get; } = new HashSet<string>();
+    public HashSet<string> tags { get; } = new HashSet<string>();
 
     public BattleEntity(
         int entityId,
@@ -28,47 +28,47 @@ public sealed class BattleEntity
         if (entityId <= 0) throw new ArgumentException("entityId must be > 0");
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("name is required");
 
-        EntityId = entityId;
-        Name = name;
-        MaxHp = Mathf.Max(1, maxHp);
-        CurrentHp = MaxHp;
-        Attack = Mathf.Max(0, attack);
-        Defense = Mathf.Max(0, defense);
+        this.entityId = entityId;
+        this.name = name;
+        this.maxHp = Mathf.Max(1, maxHp);
+        currentHp = this.maxHp;
+        this.attack = Mathf.Max(0, attack);
+        this.defense = Mathf.Max(0, defense);
     }
 
     public void SetBaseStats(int maxHp, int attack, int defense, bool resetHpToFull = false)
     {
-        MaxHp = Mathf.Max(1, maxHp);
-        Attack = Mathf.Max(0, attack);
-        Defense = Mathf.Max(0, defense);
+        this.maxHp = Mathf.Max(1, maxHp);
+        this.attack = Mathf.Max(0, attack);
+        this.defense = Mathf.Max(0, defense);
 
         if (resetHpToFull)
         {
-            CurrentHp = MaxHp;
+            currentHp = this.maxHp;
         }
         else
         {
-            CurrentHp = Mathf.Clamp(CurrentHp, 0, MaxHp);
+            currentHp = Mathf.Clamp(currentHp, 0, this.maxHp);
         }
     }
 
     public int ApplyDamage(int value)
     {
         int damage = Mathf.Max(0, value);
-        if (damage == 0 || IsDead) return 0;
+        if (damage == 0 || isDead) return 0;
 
-        int oldHp = CurrentHp;
-        CurrentHp = Mathf.Max(0, CurrentHp - damage);
-        return oldHp - CurrentHp;
+        int oldHp = currentHp;
+        currentHp = Mathf.Max(0, currentHp - damage);
+        return oldHp - currentHp;
     }
 
     public int ApplyHeal(int value)
     {
         int heal = Mathf.Max(0, value);
-        if (heal == 0 || IsDead) return 0;
+        if (heal == 0 || isDead) return 0;
 
-        int oldHp = CurrentHp;
-        CurrentHp = Mathf.Min(MaxHp, CurrentHp + heal);
-        return CurrentHp - oldHp;
+        int oldHp = currentHp;
+        currentHp = Mathf.Min(maxHp, currentHp + heal);
+        return currentHp - oldHp;
     }
 }

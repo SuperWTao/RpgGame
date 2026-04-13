@@ -14,20 +14,20 @@ namespace cfg
 {
 public partial class Tables
 {
-    public TbplayerAttributes TbplayerAttributes {get; }
-    public TbplayerInfo TbplayerInfo {get; }
+    public TbplayerAttributes tbplayerAttributes {get; }
+    public TbplayerInfo tbplayerInfo {get; }
 
     public Tables(System.Func<string, JSONNode> loader)
     {
-        TbplayerAttributes = new TbplayerAttributes(loader("tbplayerattributes"));
-        TbplayerInfo = new TbplayerInfo(loader("tbplayerinfo"));
+        tbplayerAttributes = new TbplayerAttributes(loader("tbplayerattributes"));
+        tbplayerInfo = new TbplayerInfo(loader("tbplayerinfo"));
         ResolveRef();
     }
     
     private void ResolveRef()
     {
-        TbplayerAttributes.ResolveRef(this);
-        TbplayerInfo.ResolveRef(this);
+        tbplayerAttributes.ResolveRef(this);
+        tbplayerInfo.ResolveRef(this);
     }
 }
 

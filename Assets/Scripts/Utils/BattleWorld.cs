@@ -3,44 +3,44 @@ using UnityEngine;
 
 public sealed class BattleWorld : MonoBehaviour
 {
-    public static BattleWorld Instance { get; private set; }
+    public static BattleWorld instance { get; private set; }
 
     [Header("World Config")]
     [SerializeField] private long battleId = 1;
     [SerializeField] private int randomSeed = 123456;
+    [SerializeField] private int enemyEntityIdSeed = 1000;
 
     private long _requestIdSeed = 10000;
+    private int _nextEnemyEntityId;
 
-    public BattleContext Battle { get; private set; }
-    public ICombatEventBus EventBus { get; private set; }
-    public BattleEffectRegistry EffectRegistry { get; private set; }
-    public IBattlePipeline Pipeline { get; private set; }
+    public BattleContext battle { get; private set; }
+    public ICombatEventBus eventBus { get; private set; }
+    public BattleEffectRegistry effectRegistry { get; private set; }
+    public IBattlePipeline pipeline { get; private set; }
 
-    public int PlayerEntityId { get; private set; } = -1;
-    public Transform PlayerTransform { get; private set; }
+    public int playerEntityId { get; private set; } = -1;
+    public Transform playerTransform { get; private set; }
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (instance != null && instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
-        Instance = this;
+        instance = this;
 
-        Battle = new BattleContext(battleId, randomSeed);
-        EventBus = new CombatEventBus();
-        EffectRegistry = new BattleEffectRegistry();
-        Pipeline = new StandardBattlePipeline(EventBus, EffectRegistry);
+        battle = new BattleContext(battleId, randomSeed);
+        eventBus = new CombatEventBus();
+        effectRegistry = new BattleEffectRegistry();
+        pipeline = new StandardBattlePipeline(eventBus, effectRegistry);
+        _nextEnemyEntityId = Mathf.Max(1, enemyEntityIdSeed);
     }
 
     private void Update()
     {
-        if (Battle != null)
-        {
-            Battle.AdvanceTick();
-        }
+        battle.AdvanceTick();
     }
 
     public void RegisterPlayer(
@@ -51,40 +51,68 @@ public sealed class BattleWorld : MonoBehaviour
         int defense,
         Transform playerTransform)
     {
-        if (Battle == null || playerTransform == null) return;
+        playerEntityId = entityId;
+        this.playerTransform = playerTransform;
 
-        PlayerEntityId = entityId;
-        PlayerTransform = playerTransform;
-
-        if (!Battle.TryGetEntity(entityId, out _))
+        if (!battle.TryGetEntity(entityId, out _))
         {
-            Battle.AddEntity(new BattleEntity(entityId, entityName, maxHp, attack, defense));
+            battle.AddEntity(new BattleEntity(entityId, entityName, maxHp, attack, defense));
         }
     }
 
-    public void RegisterEnemy(
-        int entityId,
+    public int RegisterEnemy(
+        int desiredEntityId,
         string entityName,
         int maxHp,
         int attack,
         int defense)
     {
-        if (Battle == null) return;
+        int entityId = ResolveEnemyEntityId(desiredEntityId);
 
-        if (!Battle.TryGetEntity(entityId, out _))
+        if (!battle.TryGetEntity(entityId, out _))
         {
-            Battle.AddEntity(new BattleEntity(entityId, entityName, maxHp, attack, defense));
+            battle.AddEntity(new BattleEntity(entityId, entityName, maxHp, attack, defense));
         }
+
+        return entityId;
     }
 
     public void UnregisterEntity(int entityId)
     {
-        Battle?.RemoveEntity(entityId);
+        battle?.RemoveEntity(entityId);
     }
 
     public long NextRequestId()
     {
         _requestIdSeed++;
         return _requestIdSeed;
+    }
+
+    public int NextEnemyEntityId()
+    {
+        return ResolveEnemyEntityId(0);
+    }
+
+    private int ResolveEnemyEntityId(int desiredEntityId)
+    {
+        if (desiredEntityId > 0
+            && desiredEntityId != playerEntityId
+            && !battle.TryGetEntity(desiredEntityId, out _))
+        {
+            _nextEnemyEntityId = Mathf.Max(_nextEnemyEntityId, desiredEntityId + 1);
+            return desiredEntityId;
+        }
+
+        while (true)
+        {
+            int candidate = _nextEnemyEntityId;
+            _nextEnemyEntityId++;
+
+            if (candidate <= 0) continue;
+            if (candidate == playerEntityId) continue;
+            if (battle.TryGetEntity(candidate, out _)) continue;
+
+            return candidate;
+        }
     }
 }

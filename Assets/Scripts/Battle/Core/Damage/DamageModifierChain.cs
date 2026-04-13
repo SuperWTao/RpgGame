@@ -27,7 +27,7 @@ public sealed class DamageModifierChain
 
     public int Resolve(ActionExecutionContext ctx, DamagePacket packet)
     {
-        _modifiers.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        _modifiers.Sort((a, b) => a.priority.CompareTo(b.priority));
 
         for (int i = 0; i < _modifiers.Count; i++)
         {
@@ -38,15 +38,15 @@ public sealed class DamageModifierChain
             }
         }
 
-        float value = (packet.BaseDamage + packet.FlatAdd) * (1f + packet.PercentAdd);
-        value -= packet.FlatReduce;
+        float value = (packet.baseDamage + packet.flatAdd) * (1f + packet.percentAdd);
+        value -= packet.flatReduce;
 
         int finalDamage = (int)Math.Round(value);
-        if (finalDamage < packet.MinDamage) finalDamage = packet.MinDamage;
-        if (finalDamage > packet.MaxDamage) finalDamage = packet.MaxDamage;
+        if (finalDamage < packet.minDamage) finalDamage = packet.minDamage;
+        if (finalDamage > packet.maxDamage) finalDamage = packet.maxDamage;
         if (finalDamage < 0) finalDamage = 0;
 
-        packet.FinalDamage = finalDamage;
+        packet.finalDamage = finalDamage;
         return finalDamage;
     }
 }

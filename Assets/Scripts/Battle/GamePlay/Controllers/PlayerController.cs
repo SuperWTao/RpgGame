@@ -68,6 +68,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("状态")]
     public bool isAttacking;
+    private bool _isControlLocked = false;
     private bool _attackInput;
     private bool _isRunning = false;
     private bool _isJumping = false;
@@ -77,7 +78,7 @@ public class PlayerController : MonoBehaviour
 
     private PlayerState _playerState;
 
-    public Animator Anim => _anim;
+    public Animator anim => _anim;
 
 #region 生命周期
     private void Awake()
@@ -124,6 +125,14 @@ public class PlayerController : MonoBehaviour
         CheckGround();
         SwitchPlayerState();
         CaculateGravity();
+        UpdateVerticalVelocityAnimParam();
+
+        if (_isControlLocked)
+        {
+            _anim.SetFloat("Speed", 0f);
+            return;
+        }
+
         Jump();
         Attack();
         CaculateInputDirection();
@@ -135,19 +144,37 @@ public class PlayerController : MonoBehaviour
 #region 输入回调
     private void OnAttackPerformed(InputAction.CallbackContext ctx)
     {
+        if (_isControlLocked) return;
         _attackInput = true;
     }
 
     private void OnRunStarted(InputAction.CallbackContext ctx)
     {
+        if (_isControlLocked) return;
         _isRunning = !_isRunning;
     }
 
     private void OnJumpStarted(InputAction.CallbackContext ctx)
     {
+        if (_isControlLocked) return;
+        // 空中按跳跃键不缓存输入，避免落地后触发二次起跳。
+        if (!_isGrounded) return;
         _isJumping = ctx.ReadValueAsButton();
     }
 #endregion
+
+    public void SetControlLocked(bool locked)
+    {
+        _isControlLocked = locked;
+        if (!locked) return;
+
+        _attackInput = false;
+        _isJumping = false;
+        _isRunning = false;
+        _targetSpeed = 0f;
+        _currentSpeed = 0f;
+        _anim.SetFloat("Speed", 0f);
+    }
 
 #region 移动跳跃
     private void CheckGround()
@@ -164,6 +191,8 @@ public class PlayerController : MonoBehaviour
         else
         {
             _isGrounded = false;
+            // 离地后清理跳跃输入，防止旧输入在落地后被消费。
+            _isJumping = false;
         }
     }
 
@@ -194,6 +223,13 @@ public class PlayerController : MonoBehaviour
             _anim.SetFloat("LeftRightFeet", feet);
             _isJumping = false;
         }
+    }
+
+    private void UpdateVerticalVelocityAnimParam()
+    {
+        // Grounded 时将参数压到 0，避免落地后动画仍保持负值。
+        float verticalForAnim = _isGrounded ? 0f : _verticalVelocity;
+        _anim.SetFloat("VerticalVelocity", verticalForAnim);
     }
 
     private void CaculateInputDirection()
@@ -318,7 +354,6 @@ public class PlayerController : MonoBehaviour
     // 由动画事件在命中帧触发，立即结算伤害。
     public void OnAttackHitFrameEvent()
     {
-        if (!enableBattleRuntime || _battle == null) return;
         if (!isAttacking) return;
         if (_currentAttackIndex < 0) return;
 
@@ -335,8 +370,7 @@ public class PlayerController : MonoBehaviour
     {
         _capturedTargetIds.Clear();
 
-        if (_pipeline == null || _battle == null || _playerBattleEntity == null) return;
-        if (_playerBattleEntity.IsDead) return;
+        if (_playerBattleEntity.isDead) return;
         if (attackHitPoint == null) return;
 
         int count = Physics.OverlapSphereNonAlloc(
@@ -354,10 +388,10 @@ public class PlayerController : MonoBehaviour
             BattleEnemyActor enemyActor = col.GetComponentInParent<BattleEnemyActor>();
             if (enemyActor == null) continue;
 
-            int targetId = enemyActor.EntityId;
+            int targetId = enemyActor.battleEntityId;
             if (_capturedTargetIds.Contains(targetId)) continue;
             if (!_battle.TryGetEntity(targetId, out var targetEntity)) continue;
-            if (targetEntity.IsDead) continue;
+            if (targetEntity.isDead) continue;
 
             _capturedTargetIds.Add(targetId);
         }
@@ -369,29 +403,28 @@ public class PlayerController : MonoBehaviour
         {
             return;
         }
-        if (_pipeline == null || _battle == null || _playerBattleEntity == null) return;
-        if (_playerBattleEntity.IsDead) return;
+        if (_playerBattleEntity.isDead) return;
 
         for (int i = 0; i < _capturedTargetIds.Count; i++)
         {
             int targetId = _capturedTargetIds[i];
 
             if (!_battle.TryGetEntity(targetId, out var targetEntity)) continue;
-            if (targetEntity.IsDead) continue;
+            if (targetEntity.isDead) continue;
 
             ActionRequest req = ActionRequest.CreateNormalAttack(NextRequestId(), playerEntityId, targetId);
             ActionResult result = _pipeline.Execute(_battle, req);
 
-            if (!result.Success)
+            if (!result.success)
             {
-                Debug.LogWarning("Player attack failed: " + result.Code + ", " + result.Message);
+                Debug.LogWarning("Player attack failed: " + result.code + ", " + result.message);
                 continue;
             }
 
-            Debug.Log("[Battle] Player hit Enemy(" + targetId + ") for " + result.DamageApplied
-                      + ". Enemy HP: " + targetEntity.CurrentHp + "/" + targetEntity.MaxHp);
+            Debug.Log("[Battle] Player hit Enemy(" + targetId + ") for " + result.damageApplied
+                      + ". Enemy HP: " + targetEntity.currentHp + "/" + targetEntity.maxHp);
 
-            if (targetEntity.IsDead)
+            if (targetEntity.isDead)
             {
                 Debug.Log("[Battle] Enemy Dead: " + targetId);
             }
@@ -404,25 +437,12 @@ public class PlayerController : MonoBehaviour
 #region BattleRuntime
     private void InitBattleRuntime()
     {
-        BattleWorld world = BattleWorld.Instance;
-        if (world == null)
-        {
-            Debug.LogError("[Battle] BattleWorld.Instance is null. Please add BattleWorld to scene.");
-            enableBattleRuntime = false;
-            return;
-        }
+        BattleWorld world = BattleWorld.instance;
 
-        _battle = world.Battle;
-        _eventBus = world.EventBus;
-        _effectRegistry = world.EffectRegistry;
-        _pipeline = world.Pipeline;
-
-        if (_battle == null || _eventBus == null || _effectRegistry == null || _pipeline == null)
-        {
-            Debug.LogError("[Battle] BattleWorld runtime is not initialized.");
-            enableBattleRuntime = false;
-            return;
-        }
+        _battle = world.battle;
+        _eventBus = world.eventBus;
+        _effectRegistry = world.effectRegistry;
+        _pipeline = world.pipeline;
 
         world.RegisterPlayer(
             playerEntityId,
@@ -441,14 +461,14 @@ public class PlayerController : MonoBehaviour
 
         _battleEventHandler = evt =>
         {
-            // Debug.Log("[BattleEvent] stage=" + evt.Stage + ", req=" + evt.RequestId + ", tick=" + evt.Tick);
+            // Debug.Log("[BattleEvent] stage=" + evt.stage + ", req=" + evt.requestId + ", tick=" + evt.tick);
         };
         _eventBus.SubscribeAll(_battleEventHandler);
     }
 
     private long NextRequestId()
     {
-        BattleWorld world = BattleWorld.Instance;
+        BattleWorld world = BattleWorld.instance;
         if (world != null)
         {
             return world.NextRequestId();

@@ -2,18 +2,18 @@ using UnityEngine;
 
 public sealed class EnemyAIBlackboard
 {
-    public Transform Self;
-    public Transform Target;
+    public Transform self;
+    public Transform target;
 
-    public float MoveSpeed;
-    public float AttackRange;
-    public float AttackCooldown;
-    public float NextAttackTime;
+    public float moveSpeed;
+    public float attackRange;
+    public float attackCooldown;
+    public float nextAttackTime;
 
-    public BattleContext Battle;
-    public IBattlePipeline Pipeline;
-    public int SourceEntityId;
-    public int TargetEntityId;
+    public BattleContext battle;
+    public IBattlePipeline pipeline;
+    public int sourceEntityId;
+    public int targetEntityId;
 
-    public System.Func<long> NextRequestId;
+    public System.Func<long> nextRequestId;
 }

@@ -1,43 +1,43 @@
 public sealed class ActionExecutionContext
 {
-    public BattleContext Battle;
-    public ActionRequest Request;
-    public ActionResult Result;
+    public BattleContext battle;
+    public ActionRequest request;
+    public ActionResult result;
 
-    public BattleEntity Source;
-    public BattleEntity Target;
+    public BattleEntity source;
+    public BattleEntity target;
 
     // 第二步字段保留，兼容旧逻辑
-    public int PendingDamage;
-    public int PendingHeal;
+    public int pendingDamage;
+    public int pendingHeal;
 
     // 第三步新增
-    public DamagePacket DamagePacket;
-    public DamageModifierChain DamageChain;
+    public DamagePacket damagePacket;
+    public DamageModifierChain damageChain;
 
     public ActionExecutionContext(BattleContext battle, ActionRequest request)
     {
-        Battle = battle;
-        Request = request;
+        this.battle = battle;
+        this.request = request;
 
-        Result = new ActionResult
+        result = new ActionResult
         {
-            RequestId = request.RequestId,
-            SourceEntityId = request.SourceEntityId,
-            MainTargetEntityId = request.MainTargetEntityId,
-            Code = ActionResultCode.UnknownError,
-            Message = "not executed"
+            requestId = request.requestId,
+            sourceEntityId = request.sourceEntityId,
+            mainTargetEntityId = request.mainTargetEntityId,
+            code = ActionResultCode.UnknownError,
+            message = "not executed"
         };
 
-        DamagePacket = new DamagePacket
+        damagePacket = new DamagePacket
         {
-            RequestId = request.RequestId,
-            SourceEntityId = request.SourceEntityId,
-            TargetEntityId = request.MainTargetEntityId,
-            ActionType = request.ActionType,
-            DamageType = DamageType.Physical
+            requestId = request.requestId,
+            sourceEntityId = request.sourceEntityId,
+            targetEntityId = request.mainTargetEntityId,
+            actionType = request.actionType,
+            damageType = DamageType.Physical
         };
 
-        DamageChain = new DamageModifierChain();
+        damageChain = new DamageModifierChain();
     }
 }

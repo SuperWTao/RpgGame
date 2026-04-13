@@ -17,8 +17,8 @@ public partial struct vector2
 {
     public vector2(JSONNode _buf) 
     {
-        { if(!_buf["x"].IsNumber) { throw new SerializationException(); }  X = _buf["x"]; }
-        { if(!_buf["y"].IsNumber) { throw new SerializationException(); }  Y = _buf["y"]; }
+        { if(!_buf["x"].IsNumber) { throw new SerializationException(); }  x = _buf["x"]; }
+        { if(!_buf["y"].IsNumber) { throw new SerializationException(); }  y = _buf["y"]; }
     }
 
     public static vector2 Deserializevector2(JSONNode _buf)
@@ -26,8 +26,8 @@ public partial struct vector2
         return new vector2(_buf);
     }
 
-    public readonly float X;
-    public readonly float Y;
+    public readonly float x;
+    public readonly float y;
    
 
     public  void ResolveRef(Tables tables)
@@ -37,8 +37,8 @@ public partial struct vector2
     public override string ToString()
     {
         return "{ "
-        + "x:" + X + ","
-        + "y:" + Y + ","
+        + "x:" + x + ","
+        + "y:" + y + ","
         + "}";
     }
 }

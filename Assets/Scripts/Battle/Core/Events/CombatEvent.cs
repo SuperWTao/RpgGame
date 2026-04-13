@@ -2,24 +2,24 @@ using System;
 
 public abstract class CombatEvent
 {
-    public long BattleId;
-    public int Tick;
-    public long RequestId;
-    public BattleStage Stage;
-    public DateTime UtcTime;
+    public long battleId;
+    public int tick;
+    public long requestId;
+    public BattleStage stage;
+    public DateTime utcTime;
 }
 
 public sealed class StageEvent : CombatEvent
 {
-    public string Message;
+    public string message;
 }
 
 public sealed class ActionFinishedEvent : CombatEvent
 {
-    public ActionResultCode ResultCode;
-    public int SourceEntityId;
-    public int MainTargetEntityId;
-    public int DamageApplied;
-    public int HealApplied;
-    public string Message;
+    public ActionResultCode resultCode;
+    public int sourceEntityId;
+    public int mainTargetEntityId;
+    public int damageApplied;
+    public int healApplied;
+    public string message;
 }

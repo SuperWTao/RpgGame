@@ -17,9 +17,9 @@ public sealed partial class playerInfo : Luban.BeanBase
 {
     public playerInfo(JSONNode _buf) 
     {
-        { if(!_buf["id"].IsNumber) { throw new SerializationException(); }  Id = _buf["id"]; }
-        { if(!_buf["name"].IsString) { throw new SerializationException(); }  Name = _buf["name"]; }
-        { if(!_buf["desc"].IsString) { throw new SerializationException(); }  Desc = _buf["desc"]; }
+        { if(!_buf["id"].IsNumber) { throw new SerializationException(); }  id = _buf["id"]; }
+        { if(!_buf["name"].IsString) { throw new SerializationException(); }  name = _buf["name"]; }
+        { if(!_buf["desc"].IsString) { throw new SerializationException(); }  desc = _buf["desc"]; }
     }
 
     public static playerInfo DeserializeplayerInfo(JSONNode _buf)
@@ -30,15 +30,15 @@ public sealed partial class playerInfo : Luban.BeanBase
     /// <summary>
     /// id
     /// </summary>
-    public readonly int Id;
+    public readonly int id;
     /// <summary>
     /// 名称
     /// </summary>
-    public readonly string Name;
+    public readonly string name;
     /// <summary>
     /// 描述
     /// </summary>
-    public readonly string Desc;
+    public readonly string desc;
    
     public const int __ID__ = 2095520559;
     public override int GetTypeId() => __ID__;
@@ -50,9 +50,9 @@ public sealed partial class playerInfo : Luban.BeanBase
     public override string ToString()
     {
         return "{ "
-        + "id:" + Id + ","
-        + "name:" + Name + ","
-        + "desc:" + Desc + ","
+        + "id:" + id + ","
+        + "name:" + name + ","
+        + "desc:" + desc + ","
         + "}";
     }
 }

@@ -20,7 +20,7 @@ public sealed class StandardBattlePipeline : IBattlePipeline
         if (!StageValidate(ctx))
         {
             EmitActionFinished(ctx);
-            return ctx.Result;
+            return ctx.result;
         }
 
         StageBuild(ctx);
@@ -30,7 +30,7 @@ public sealed class StandardBattlePipeline : IBattlePipeline
         StageCommit(ctx);
         StagePublish(ctx);
 
-        return ctx.Result;
+        return ctx.result;
     }
 
     private void StageSubmit(ActionExecutionContext ctx)
@@ -42,32 +42,32 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         EmitStage(ctx, BattleStage.Validate, "validate request");
 
-        if (!ctx.Battle.TryGetEntity(ctx.Request.SourceEntityId, out var source))
+        if (!ctx.battle.TryGetEntity(ctx.request.sourceEntityId, out var source))
         {
-            ctx.Result = ActionResult.Fail(ctx.Request.RequestId, ActionResultCode.InvalidSource, "source not found");
+            ctx.result = ActionResult.Fail(ctx.request.requestId, ActionResultCode.InvalidSource, "source not found");
             return false;
         }
 
-        if (!ctx.Battle.TryGetEntity(ctx.Request.MainTargetEntityId, out var target))
+        if (!ctx.battle.TryGetEntity(ctx.request.mainTargetEntityId, out var target))
         {
-            ctx.Result = ActionResult.Fail(ctx.Request.RequestId, ActionResultCode.InvalidTarget, "target not found");
+            ctx.result = ActionResult.Fail(ctx.request.requestId, ActionResultCode.InvalidTarget, "target not found");
             return false;
         }
 
-        if (source.IsDead)
+        if (source.isDead)
         {
-            ctx.Result = ActionResult.Fail(ctx.Request.RequestId, ActionResultCode.SourceDead, "source is dead");
+            ctx.result = ActionResult.Fail(ctx.request.requestId, ActionResultCode.SourceDead, "source is dead");
             return false;
         }
 
-        if (target.IsDead)
+        if (target.isDead)
         {
-            ctx.Result = ActionResult.Fail(ctx.Request.RequestId, ActionResultCode.TargetDead, "target is dead");
+            ctx.result = ActionResult.Fail(ctx.request.requestId, ActionResultCode.TargetDead, "target is dead");
             return false;
         }
 
-        ctx.Source = source;
-        ctx.Target = target;
+        ctx.source = source;
+        ctx.target = target;
         return true;
     }
 
@@ -75,21 +75,21 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         EmitStage(ctx, BattleStage.Build, "build runtime context");
 
-        ctx.PendingDamage = 0;
-        ctx.PendingHeal = 0;
+        ctx.pendingDamage = 0;
+        ctx.pendingHeal = 0;
 
-        ctx.DamagePacket.ResetRuntime();
-        ctx.DamagePacket.RequestId = ctx.Request.RequestId;
-        ctx.DamagePacket.SourceEntityId = ctx.Request.SourceEntityId;
-        ctx.DamagePacket.TargetEntityId = ctx.Request.MainTargetEntityId;
-        ctx.DamagePacket.ActionType = ctx.Request.ActionType;
-        ctx.DamagePacket.DamageType = DamageType.Physical;
+        ctx.damagePacket.ResetRuntime();
+        ctx.damagePacket.requestId = ctx.request.requestId;
+        ctx.damagePacket.sourceEntityId = ctx.request.sourceEntityId;
+        ctx.damagePacket.targetEntityId = ctx.request.mainTargetEntityId;
+        ctx.damagePacket.actionType = ctx.request.actionType;
+        ctx.damagePacket.damageType = DamageType.Physical;
 
-        ctx.DamageChain.Clear();
-        ctx.DamageChain.Add(new SourceAttackAsBaseModifier());
-        ctx.DamageChain.Add(new SkillFlatBonusModifier());
-        ctx.DamageChain.Add(new TargetDefenseReductionModifier());
-        ctx.DamageChain.Add(new OffensiveActionMinOneModifier());
+        ctx.damageChain.Clear();
+        ctx.damageChain.Add(new SourceAttackAsBaseModifier());
+        ctx.damageChain.Add(new SkillFlatBonusModifier());
+        ctx.damageChain.Add(new TargetDefenseReductionModifier());
+        ctx.damageChain.Add(new OffensiveActionMinOneModifier());
     }
 
     private void StagePreResolve(ActionExecutionContext ctx)
@@ -102,19 +102,19 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         EmitStage(ctx, BattleStage.Resolve, "resolve");
 
-        switch (ctx.Request.ActionType)
+        switch (ctx.request.actionType)
         {
             case BattleActionType.NormalAttack:
             case BattleActionType.Skill:
             {
-                ctx.PendingDamage = ctx.DamageChain.Resolve(ctx, ctx.DamagePacket);
-                ctx.PendingHeal = 0;
+                ctx.pendingDamage = ctx.damageChain.Resolve(ctx, ctx.damagePacket);
+                ctx.pendingHeal = 0;
                 break;
             }
             default:
             {
-                ctx.PendingDamage = 0;
-                ctx.PendingHeal = 0;
+                ctx.pendingDamage = 0;
+                ctx.pendingHeal = 0;
                 break;
             }
         }
@@ -130,19 +130,19 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         EmitStage(ctx, BattleStage.Commit, "commit");
 
-        int realDamage = ctx.Target.ApplyDamage(ctx.PendingDamage);
+        int realDamage = ctx.target.ApplyDamage(ctx.pendingDamage);
 
         // 后置阶段可能写入回复
         int realHeal = 0;
-        if (ctx.PendingHeal > 0)
+        if (ctx.pendingHeal > 0)
         {
-            realHeal = ctx.Source.ApplyHeal(ctx.PendingHeal);
+            realHeal = ctx.source.ApplyHeal(ctx.pendingHeal);
         }
 
-        ctx.Result = ActionResult.Ok(
-            ctx.Request.RequestId,
-            ctx.Request.SourceEntityId,
-            ctx.Request.MainTargetEntityId,
+        ctx.result = ActionResult.Ok(
+            ctx.request.requestId,
+            ctx.request.sourceEntityId,
+            ctx.request.mainTargetEntityId,
             realDamage,
             realHeal,
             "ok");
@@ -159,12 +159,12 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         _eventBus?.Publish(new StageEvent
         {
-            BattleId = ctx.Battle.BattleId,
-            Tick = ctx.Battle.Tick,
-            RequestId = ctx.Request.RequestId,
-            Stage = stage,
-            UtcTime = DateTime.UtcNow,
-            Message = message
+            battleId = ctx.battle.battleId,
+            tick = ctx.battle.tick,
+            requestId = ctx.request.requestId,
+            stage = stage,
+            utcTime = DateTime.UtcNow,
+            message = message
         });
     }
 
@@ -172,17 +172,17 @@ public sealed class StandardBattlePipeline : IBattlePipeline
     {
         _eventBus?.Publish(new ActionFinishedEvent
         {
-            BattleId = ctx.Battle.BattleId,
-            Tick = ctx.Battle.Tick,
-            RequestId = ctx.Request.RequestId,
-            Stage = BattleStage.Publish,
-            UtcTime = DateTime.UtcNow,
-            ResultCode = ctx.Result.Code,
-            SourceEntityId = ctx.Result.SourceEntityId,
-            MainTargetEntityId = ctx.Result.MainTargetEntityId,
-            DamageApplied = ctx.Result.DamageApplied,
-            HealApplied = ctx.Result.HealApplied,
-            Message = ctx.Result.Message
+            battleId = ctx.battle.battleId,
+            tick = ctx.battle.tick,
+            requestId = ctx.request.requestId,
+            stage = BattleStage.Publish,
+            utcTime = DateTime.UtcNow,
+            resultCode = ctx.result.code,
+            sourceEntityId = ctx.result.sourceEntityId,
+            mainTargetEntityId = ctx.result.mainTargetEntityId,
+            damageApplied = ctx.result.damageApplied,
+            healApplied = ctx.result.healApplied,
+            message = ctx.result.message
         });
     }
 }

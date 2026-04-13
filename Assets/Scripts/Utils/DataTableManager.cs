@@ -6,14 +6,14 @@ using UnityEngine;
 
 public static class DataTableManager
 {
-    public static Tables Tables { get; private set; }
+    public static Tables tables { get; private set; }
     private static bool _isInitialized = false;
 
     public static void Initialize()
     {
         if (_isInitialized)
             return;
-        Tables = new Tables(LoadTable);
+        tables = new Tables(LoadTable);
         _isInitialized = true;
         
     }

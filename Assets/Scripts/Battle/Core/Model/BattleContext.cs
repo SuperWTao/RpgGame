@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 public sealed class BattleContext
 {
-    public long BattleId { get; }
-    public int Tick { get; private set; }
+    public long battleId { get; }
+    public int tick { get; private set; }
 
     // 后续用于确定性战斗（暴击/闪避等）
-    public Random Rng { get; }
+    public Random rng { get; }
 
     private readonly Dictionary<int, BattleEntity> _entities = new Dictionary<int, BattleEntity>();
 
@@ -15,27 +15,27 @@ public sealed class BattleContext
     {
         if (battleId <= 0) throw new ArgumentException("battleId must be > 0");
 
-        BattleId = battleId;
-        Rng = new Random(randomSeed);
-        Tick = 0;
+        this.battleId = battleId;
+        rng = new Random(randomSeed);
+        tick = 0;
     }
 
-    public IReadOnlyDictionary<int, BattleEntity> Entities => _entities;
+    public IReadOnlyDictionary<int, BattleEntity> entities => _entities;
 
     public void AdvanceTick()
     {
-        Tick++;
+        tick++;
     }
 
     public void AddEntity(BattleEntity entity)
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
-        if (_entities.ContainsKey(entity.EntityId))
+        if (_entities.ContainsKey(entity.entityId))
         {
-            throw new InvalidOperationException($"entity already exists: {entity.EntityId}");
+            throw new InvalidOperationException($"entity already exists: {entity.entityId}");
         }
 
-        _entities.Add(entity.EntityId, entity);
+        _entities.Add(entity.entityId, entity);
     }
 
     public bool RemoveEntity(int entityId)

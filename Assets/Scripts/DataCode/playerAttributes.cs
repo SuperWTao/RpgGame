@@ -17,18 +17,18 @@ public sealed partial class playerAttributes : Luban.BeanBase
 {
     public playerAttributes(JSONNode _buf) 
     {
-        { if(!_buf["id"].IsNumber) { throw new SerializationException(); }  Id = _buf["id"]; }
-        { if(!_buf["role_id"].IsNumber) { throw new SerializationException(); }  RoleId = _buf["role_id"]; }
-        { if(!_buf["name"].IsString) { throw new SerializationException(); }  Name = _buf["name"]; }
-        { if(!_buf["level"].IsNumber) { throw new SerializationException(); }  Level = _buf["level"]; }
-        { if(!_buf["max_level"].IsNumber) { throw new SerializationException(); }  MaxLevel = _buf["max_level"]; }
-        { if(!_buf["attack"].IsNumber) { throw new SerializationException(); }  Attack = _buf["attack"]; }
-        { if(!_buf["defence"].IsNumber) { throw new SerializationException(); }  Defence = _buf["defence"]; }
-        { if(!_buf["health"].IsNumber) { throw new SerializationException(); }  Health = _buf["health"]; }
-        { if(!_buf["coldTime"].IsNumber) { throw new SerializationException(); }  ColdTime = _buf["coldTime"]; }
-        { if(!_buf["nextLevel"].IsNumber) { throw new SerializationException(); }  NextLevel = _buf["nextLevel"]; }
-        { if(!_buf["walkSpeed"].IsNumber) { throw new SerializationException(); }  WalkSpeed = _buf["walkSpeed"]; }
-        { if(!_buf["runSpeed"].IsNumber) { throw new SerializationException(); }  RunSpeed = _buf["runSpeed"]; }
+        { if(!_buf["id"].IsNumber) { throw new SerializationException(); }  id = _buf["id"]; }
+        { if(!_buf["role_id"].IsNumber) { throw new SerializationException(); }  roleId = _buf["role_id"]; }
+        { if(!_buf["name"].IsString) { throw new SerializationException(); }  name = _buf["name"]; }
+        { if(!_buf["level"].IsNumber) { throw new SerializationException(); }  level = _buf["level"]; }
+        { if(!_buf["max_level"].IsNumber) { throw new SerializationException(); }  maxLevel = _buf["max_level"]; }
+        { if(!_buf["attack"].IsNumber) { throw new SerializationException(); }  attack = _buf["attack"]; }
+        { if(!_buf["defence"].IsNumber) { throw new SerializationException(); }  defence = _buf["defence"]; }
+        { if(!_buf["health"].IsNumber) { throw new SerializationException(); }  health = _buf["health"]; }
+        { if(!_buf["coldTime"].IsNumber) { throw new SerializationException(); }  coldTime = _buf["coldTime"]; }
+        { if(!_buf["nextLevel"].IsNumber) { throw new SerializationException(); }  nextLevel = _buf["nextLevel"]; }
+        { if(!_buf["walkSpeed"].IsNumber) { throw new SerializationException(); }  walkSpeed = _buf["walkSpeed"]; }
+        { if(!_buf["runSpeed"].IsNumber) { throw new SerializationException(); }  runSpeed = _buf["runSpeed"]; }
     }
 
     public static playerAttributes DeserializeplayerAttributes(JSONNode _buf)
@@ -39,51 +39,51 @@ public sealed partial class playerAttributes : Luban.BeanBase
     /// <summary>
     /// id
     /// </summary>
-    public readonly int Id;
+    public readonly int id;
     /// <summary>
     /// 角色id
     /// </summary>
-    public readonly int RoleId;
+    public readonly int roleId;
     /// <summary>
     /// 角色名称
     /// </summary>
-    public readonly string Name;
+    public readonly string name;
     /// <summary>
     /// 等级
     /// </summary>
-    public readonly int Level;
+    public readonly int level;
     /// <summary>
     /// 最高等级
     /// </summary>
-    public readonly int MaxLevel;
+    public readonly int maxLevel;
     /// <summary>
     /// 基础攻击力
     /// </summary>
-    public readonly int Attack;
+    public readonly int attack;
     /// <summary>
     /// 基础防御力
     /// </summary>
-    public readonly int Defence;
+    public readonly int defence;
     /// <summary>
     /// 基础生命值
     /// </summary>
-    public readonly int Health;
+    public readonly int health;
     /// <summary>
     /// 技能冷却时间
     /// </summary>
-    public readonly float ColdTime;
+    public readonly float coldTime;
     /// <summary>
     /// 下一等级所需经验
     /// </summary>
-    public readonly int NextLevel;
+    public readonly int nextLevel;
     /// <summary>
     /// 行走速度
     /// </summary>
-    public readonly float WalkSpeed;
+    public readonly float walkSpeed;
     /// <summary>
     /// 奔跑速度
     /// </summary>
-    public readonly float RunSpeed;
+    public readonly float runSpeed;
    
     public const int __ID__ = -817448168;
     public override int GetTypeId() => __ID__;
@@ -95,18 +95,18 @@ public sealed partial class playerAttributes : Luban.BeanBase
     public override string ToString()
     {
         return "{ "
-        + "id:" + Id + ","
-        + "roleId:" + RoleId + ","
-        + "name:" + Name + ","
-        + "level:" + Level + ","
-        + "maxLevel:" + MaxLevel + ","
-        + "attack:" + Attack + ","
-        + "defence:" + Defence + ","
-        + "health:" + Health + ","
-        + "coldTime:" + ColdTime + ","
-        + "nextLevel:" + NextLevel + ","
-        + "walkSpeed:" + WalkSpeed + ","
-        + "runSpeed:" + RunSpeed + ","
+        + "id:" + id + ","
+        + "roleId:" + roleId + ","
+        + "name:" + name + ","
+        + "level:" + level + ","
+        + "maxLevel:" + maxLevel + ","
+        + "attack:" + attack + ","
+        + "defence:" + defence + ","
+        + "health:" + health + ","
+        + "coldTime:" + coldTime + ","
+        + "nextLevel:" + nextLevel + ","
+        + "walkSpeed:" + walkSpeed + ","
+        + "runSpeed:" + runSpeed + ","
         + "}";
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class PanelManager
 {
-	public static readonly string[] DontClosePanel = new string[] { "StageLoadingPanel" , "TipPanel"}; // 这两个面板不会被关闭和销毁
+	public static readonly string[] dontClosePanel = new string[] { "StageLoadingPanel" , "TipPanel"}; // 这两个面板不会被关闭和销毁
 	//Layer
 	public enum Layer
 	{
@@ -16,21 +16,21 @@ public static class PanelManager
 	//面板列表
 	public static Dictionary<string, BasePanel> panels = new Dictionary<string, BasePanel>();
 	//结构
-	public static Transform root;
-	public static Transform canvas;
+	public static Transform uiRoot;
+	public static Transform uiCanvas;
 	//初始化
 	public static void Init()
 	{	
 		// 找到场景中的root， root下有canvas， canvas下有panel和tip
-		root = GameObject.Find("UIRoot").transform;
-		canvas = root.Find("Canvas"); 
-		Transform panel = canvas.Find("Panel");
-		Transform tip = canvas.Find("Tip");
+		uiRoot = GameObject.Find("UIRoot").transform;
+		uiCanvas = uiRoot.Find("Canvas"); 
+		Transform panel = uiCanvas.Find("Panel");
+		Transform tip = uiCanvas.Find("Tip");
 		layers[Layer.Panel] = panel;
 		layers[Layer.Tip] = tip;
 		// layers.Add(Layer.Panel, panel);
 		// layers.Add(Layer.Tip, tip);
-		GameObject.DontDestroyOnLoad(root);
+		GameObject.DontDestroyOnLoad(uiRoot);
 	}
 
 	//打开面板
@@ -44,7 +44,7 @@ public static class PanelManager
 			return;
 		}
 		//组件
-		BasePanel panel = root.gameObject.AddComponent<T>();
+		BasePanel panel = uiRoot.gameObject.AddComponent<T>();
 		panel.OnInit();
 		panel.Init();
 		//父容器
@@ -98,7 +98,7 @@ public static class PanelManager
 
 	public static void Clear()
 	{
-		HashSet<string> dontCloseSet = new HashSet<string>(DontClosePanel);
+		HashSet<string> dontCloseSet = new HashSet<string>(dontClosePanel);
 		foreach (string name in new List<string>(panels.Keys))
 		{
 			if (dontCloseSet.Contains(name))

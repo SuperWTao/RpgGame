@@ -10,8 +10,6 @@ public sealed class CombatEventBus : ICombatEventBus
 
     public void Publish(CombatEvent evt)
     {
-        if (evt == null) return;
-
         _allHandlers?.Invoke(evt);
 
         var eventType = evt.GetType();
@@ -36,8 +34,6 @@ public sealed class CombatEventBus : ICombatEventBus
 
     public void Subscribe<T>(Action<T> handler) where T : CombatEvent
     {
-        if (handler == null) return;
-
         var t = typeof(T);
         if (!_typedHandlers.TryGetValue(t, out var handlers))
         {
@@ -50,8 +46,6 @@ public sealed class CombatEventBus : ICombatEventBus
 
     public void Unsubscribe<T>(Action<T> handler) where T : CombatEvent
     {
-        if (handler == null) return;
-
         var t = typeof(T);
         if (!_typedHandlers.TryGetValue(t, out var handlers))
         {

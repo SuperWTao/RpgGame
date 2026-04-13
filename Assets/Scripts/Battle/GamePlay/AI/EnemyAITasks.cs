@@ -5,12 +5,12 @@ public sealed class BTCanAttackTarget : LeafTask<EnemyAIBlackboard>
 {
     protected override int Execute()
     {
-        if (blackboard.Target == null) return TaskStatus.ERROR;
-        if (!blackboard.Battle.TryGetEntity(blackboard.TargetEntityId, out var targetEntity)) return TaskStatus.ERROR;
-        if (targetEntity.IsDead) return TaskStatus.ERROR;
+        if (blackboard.target == null) return TaskStatus.ERROR;
+        if (!blackboard.battle.TryGetEntity(blackboard.targetEntityId, out var targetEntity)) return TaskStatus.ERROR;
+        if (targetEntity.isDead) return TaskStatus.ERROR;
 
-        float dist = Vector3.Distance(blackboard.Self.position, blackboard.Target.position);
-        return dist <= blackboard.AttackRange ? TaskStatus.SUCCESS : TaskStatus.ERROR;
+        float dist = Vector3.Distance(blackboard.self.position, blackboard.target.position);
+        return dist <= blackboard.attackRange ? TaskStatus.SUCCESS : TaskStatus.ERROR;
     }
 
     protected override void OnEventImpl(object eventObj) { }
@@ -20,26 +20,26 @@ public sealed class BTMoveToTarget : LeafTask<EnemyAIBlackboard>
 {
     protected override int Execute()
     {
-        if (blackboard.Target == null) return TaskStatus.ERROR;
+        if (blackboard.target == null) return TaskStatus.ERROR;
 
-        Vector3 selfPos = blackboard.Self.position;
-        Vector3 targetPos = blackboard.Target.position;
+        Vector3 selfPos = blackboard.self.position;
+        Vector3 targetPos = blackboard.target.position;
         targetPos.y = selfPos.y;
 
         Vector3 dir = (targetPos - selfPos);
         float dist = dir.magnitude;
-        if (dist <= blackboard.AttackRange)
+        if (dist <= blackboard.attackRange)
         {
             return TaskStatus.SUCCESS;
         }
 
-        Vector3 step = dir.normalized * blackboard.MoveSpeed * Time.deltaTime;
+        Vector3 step = dir.normalized * blackboard.moveSpeed * Time.deltaTime;
         if (step.magnitude > dist) step = dir;
-        blackboard.Self.position += step;
+        blackboard.self.position += step;
 
         if (step.sqrMagnitude > 0.0001f)
         {
-            blackboard.Self.forward = step.normalized;
+            blackboard.self.forward = step.normalized;
         }
 
         return TaskStatus.RUNNING;
@@ -52,19 +52,19 @@ public sealed class BTDoAttack : LeafTask<EnemyAIBlackboard>
 {
     protected override int Execute()
     {
-        if (Time.time < blackboard.NextAttackTime) return TaskStatus.RUNNING;
-        if (blackboard.Target == null) return TaskStatus.ERROR;
+        if (Time.time < blackboard.nextAttackTime) return TaskStatus.RUNNING;
+        if (blackboard.target == null) return TaskStatus.ERROR;
 
-        long reqId = blackboard.NextRequestId != null ? blackboard.NextRequestId() : (long)Time.frameCount;
-        var req = ActionRequest.CreateNormalAttack(reqId, blackboard.SourceEntityId, blackboard.TargetEntityId);
-        var result = blackboard.Pipeline.Execute(blackboard.Battle, req);
+        long reqId = blackboard.nextRequestId != null ? blackboard.nextRequestId() : (long)Time.frameCount;
+        var req = ActionRequest.CreateNormalAttack(reqId, blackboard.sourceEntityId, blackboard.targetEntityId);
+        var result = blackboard.pipeline.Execute(blackboard.battle, req);
 
-        if (!result.Success)
+        if (!result.success)
         {
             return TaskStatus.ERROR;
         }
 
-        blackboard.NextAttackTime = Time.time + blackboard.AttackCooldown;
+        blackboard.nextAttackTime = Time.time + blackboard.attackCooldown;
         return TaskStatus.SUCCESS;
     }
 

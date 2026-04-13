@@ -32,14 +32,14 @@ public sealed class BattleEffectRegistry
 
     public void ApplyPreResolve(ActionExecutionContext ctx)
     {
-        ApplyPreResolveForOwner(ctx, ctx.Source.EntityId, true);
-        ApplyPreResolveForOwner(ctx, ctx.Target.EntityId, false);
+        ApplyPreResolveForOwner(ctx, ctx.source.entityId, true);
+        ApplyPreResolveForOwner(ctx, ctx.target.entityId, false);
     }
 
     public void ApplyPostResolve(ActionExecutionContext ctx)
     {
-        ApplyPostResolveForOwner(ctx, ctx.Source.EntityId, true);
-        ApplyPostResolveForOwner(ctx, ctx.Target.EntityId, false);
+        ApplyPostResolveForOwner(ctx, ctx.source.entityId, true);
+        ApplyPostResolveForOwner(ctx, ctx.target.entityId, false);
     }
 
     public void TickAndCleanup()
@@ -65,7 +65,7 @@ public sealed class BattleEffectRegistry
         {
             for (int i = 0; i < buffList.Count; i++)
             {
-                buffList[i].OnPreResolve(ctx, ownerEntityId, ownerIsSource, ctx.DamageChain);
+                buffList[i].OnPreResolve(ctx, ownerEntityId, ownerIsSource, ctx.damageChain);
             }
         }
 
@@ -73,7 +73,7 @@ public sealed class BattleEffectRegistry
         {
             for (int i = 0; i < passiveList.Count; i++)
             {
-                passiveList[i].OnPreResolve(ctx, ownerEntityId, ownerIsSource, ctx.DamageChain);
+                passiveList[i].OnPreResolve(ctx, ownerEntityId, ownerIsSource, ctx.damageChain);
             }
         }
     }

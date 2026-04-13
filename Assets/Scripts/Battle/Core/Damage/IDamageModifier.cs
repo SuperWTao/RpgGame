@@ -1,6 +1,6 @@
 public interface IDamageModifier
 {
-    int Priority { get; }
+    int priority { get; }
 
     bool CanApply(ActionExecutionContext ctx, DamagePacket packet);
 

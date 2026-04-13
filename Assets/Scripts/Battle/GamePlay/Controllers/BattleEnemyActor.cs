@@ -4,8 +4,21 @@ using Wjybxx.BTree.Branch;
 
 public sealed class BattleEnemyActor : MonoBehaviour
 {
+    [System.Serializable]
+    public struct EnemySpawnConfig
+    {
+        public int entityId;
+        public string entityName;
+        public int maxHp;
+        public int attack;
+        public int defense;
+        public float moveSpeed;
+        public float attackRange;
+        public float attackCooldown;
+    }
+
     [Header("Battle Identity")]
-    [SerializeField] private int entityId = 1001;
+    [SerializeField] private int entityId = 0;
     [SerializeField] private string entityName = "Enemy";
 
     [Header("Battle Stats")]
@@ -21,33 +34,97 @@ public sealed class BattleEnemyActor : MonoBehaviour
     private bool _bound;
     private bool _deadPrinted;
     private bool _aiEnabled = true;
+    private bool _runtimeConfigured;
 
     private TaskEntry<EnemyAIBlackboard> _treeEntry;
     private EnemyAIBlackboard _blackboard;
 
-    public int EntityId => entityId;
+    public int battleEntityId => entityId;
+
+    public void ConfigureFromSpawn(EnemySpawnConfig config)
+    {
+        if (config.entityId > 0) entityId = config.entityId;
+
+        if (!string.IsNullOrWhiteSpace(config.entityName))
+        {
+            entityName = config.entityName;
+        }
+
+        maxHp = Mathf.Max(1, config.maxHp);
+        attack = Mathf.Max(0, config.attack);
+        defense = Mathf.Max(0, config.defense);
+
+        moveSpeed = Mathf.Max(0f, config.moveSpeed);
+        attackRange = Mathf.Max(0f, config.attackRange);
+        attackCooldown = Mathf.Max(0f, config.attackCooldown);
+
+        _runtimeConfigured = true;
+    }
+
+    public void ConfigureIdentityAndStats(int runtimeEntityId, string runtimeName, int runtimeMaxHp, int runtimeAttack, int runtimeDefense)
+    {
+        var config = new EnemySpawnConfig
+        {
+            entityId = runtimeEntityId,
+            entityName = runtimeName,
+            maxHp = runtimeMaxHp,
+            attack = runtimeAttack,
+            defense = runtimeDefense,
+            moveSpeed = moveSpeed,
+            attackRange = attackRange,
+            attackCooldown = attackCooldown
+        };
+
+        ConfigureFromSpawn(config);
+    }
 
     private void OnEnable()
     {
         _bound = false;
         _deadPrinted = false;
         _aiEnabled = true;
+
+        if (!_runtimeConfigured)
+        {
+            // Ensure inspector defaults are valid for runtime spawns.
+            maxHp = Mathf.Max(1, maxHp);
+            attack = Mathf.Max(0, attack);
+            defense = Mathf.Max(0, defense);
+            moveSpeed = Mathf.Max(0f, moveSpeed);
+            attackRange = Mathf.Max(0f, attackRange);
+            attackCooldown = Mathf.Max(0f, attackCooldown);
+        }
+    }
+
+    private void OnDisable()
+    {
+        var world = BattleWorld.instance;
+        if (_bound && world != null && entityId > 0)
+        {
+            world.UnregisterEntity(entityId);
+        }
+
+        _bound = false;
+        _treeEntry = null;
+        _blackboard = null;
     }
 
     private void Update()
     {
+        var world = BattleWorld.instance;
+        if (world == null || world.battle == null || world.pipeline == null) return;
+
         if (!_bound)
         {
             TryBindToWorld();
             return;
         }
 
-        var world = BattleWorld.Instance;
-        if (world == null || world.Battle == null) return;
+        if (!_aiEnabled || _blackboard == null || _treeEntry == null) return;
 
-        if (!world.Battle.TryGetEntity(entityId, out var selfEntity)) return;
+        if (!world.battle.TryGetEntity(entityId, out var selfEntity)) return;
 
-        if (selfEntity.IsDead)
+        if (selfEntity.isDead)
         {
             if (!_deadPrinted)
             {
@@ -59,37 +136,33 @@ public sealed class BattleEnemyActor : MonoBehaviour
             return;
         }
 
-        // if (!_aiEnabled) return;
-        // if (_treeEntry == null || _blackboard == null) return;
-        // if (_blackboard.Target == null) return;
-
-        if (!world.Battle.TryGetEntity(_blackboard.TargetEntityId, out var targetEntity)) return;
-        if (targetEntity.IsDead) return;
+        if (!world.battle.TryGetEntity(_blackboard.targetEntityId, out var targetEntity)) return;
+        if (targetEntity.isDead) return;
 
         _treeEntry.Update(Time.frameCount);
     }
 
     private void TryBindToWorld()
     {
-        var world = BattleWorld.Instance;
-        if (world == null || world.Battle == null || world.Pipeline == null) return;
-        if (world.PlayerTransform == null || world.PlayerEntityId <= 0) return;
+        var world = BattleWorld.instance;
+        if (world == null || world.battle == null || world.pipeline == null) return;
+        if (world.playerTransform == null || world.playerEntityId <= 0) return;
 
-        world.RegisterEnemy(entityId, entityName, maxHp, attack, defense);
+        entityId = world.RegisterEnemy(entityId, entityName, maxHp, attack, defense);
 
         _blackboard = new EnemyAIBlackboard
         {
-            Self = transform,
-            Target = world.PlayerTransform,
-            MoveSpeed = moveSpeed,
-            AttackRange = attackRange,
-            AttackCooldown = attackCooldown,
-            NextAttackTime = 0f,
-            Battle = world.Battle,
-            Pipeline = world.Pipeline,
-            SourceEntityId = entityId,
-            TargetEntityId = world.PlayerEntityId,
-            NextRequestId = world.NextRequestId
+            self = transform,
+            target = world.playerTransform,
+            moveSpeed = moveSpeed,
+            attackRange = attackRange,
+            attackCooldown = attackCooldown,
+            nextAttackTime = 0f,
+            battle = world.battle,
+            pipeline = world.pipeline,
+            sourceEntityId = entityId,
+            targetEntityId = world.playerEntityId,
+            nextRequestId = world.NextRequestId
         };
 
         _treeEntry = new TaskEntry<EnemyAIBlackboard>("EnemyAI", BuildTree(), _blackboard, this, null);

@@ -13,29 +13,29 @@ public enum ActionResultCode
 
 public sealed class ActionResult
 {
-    public long RequestId;
+    public long requestId;
 
-    public ActionResultCode Code;
-    public bool Success => Code == ActionResultCode.Success;
+    public ActionResultCode code;
+    public bool success => code == ActionResultCode.Success;
 
-    public int SourceEntityId;
-    public int MainTargetEntityId;
+    public int sourceEntityId;
+    public int mainTargetEntityId;
 
     // 第一阶段先保留基础数值，后续第三阶段接DamagePacket
-    public int DamageApplied;
-    public int HealApplied;
+    public int damageApplied;
+    public int healApplied;
 
-    public string Message;
+    public string message;
 
     public static ActionResult Fail(long requestId, ActionResultCode code, string message)
     {
         return new ActionResult
         {
-            RequestId = requestId,
-            Code = code,
-            Message = message,
-            DamageApplied = 0,
-            HealApplied = 0
+            requestId = requestId,
+            code = code,
+            message = message,
+            damageApplied = 0,
+            healApplied = 0
         };
     }
 
@@ -43,13 +43,13 @@ public sealed class ActionResult
     {
         return new ActionResult
         {
-            RequestId = requestId,
-            Code = ActionResultCode.Success,
-            SourceEntityId = sourceId,
-            MainTargetEntityId = targetId,
-            DamageApplied = damageApplied,
-            HealApplied = healApplied,
-            Message = message
+            requestId = requestId,
+            code = ActionResultCode.Success,
+            sourceEntityId = sourceId,
+            mainTargetEntityId = targetId,
+            damageApplied = damageApplied,
+            healApplied = healApplied,
+            message = message
         };
     }
 }
